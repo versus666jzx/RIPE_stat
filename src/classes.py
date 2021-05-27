@@ -8,3 +8,6 @@ class Country:
 		self.asns = data[5] or kwargs.get("asns")
 		self.asns_stat = data[7] or kwargs.get("asns_stats")
 		self.asns_ris = data[7] or kwargs.get("asns_ris")
+		self.asns_registered = data[8] or kwargs.get("asns_registered")
+		self.asns_routed = data[9] or kwargs.get("asns_routed")
+		self.asns_non_routed = data[10] or kwargs.get("asns_non_routed")
