@@ -47,7 +47,6 @@ def get_country_info():
 
         if country_stats_from_ripe is not None:
             country_stats_from_ripe = loads(country_stats_from_ripe.text)['data']['stats']
-            print("+"*60)
             print(dumps(country_stats_from_ripe, indent=4))
             for data_from_ripe in country_stats_from_ripe:
                 country.years.append(data_from_ripe['stats_date'].split('T')[0].split('-')[0])
@@ -72,7 +71,6 @@ def get_country_info():
 
         if country_resource_list_from_ripe is not None:
             country_resource_list_from_ripe = loads(country_resource_list_from_ripe.text)["data"]
-            print("+"*60)
             print(dumps(country_resource_list_from_ripe, indent=4))
             country.asns_routed = country_resource_list_from_ripe['resources']['asn']
             country.ipv6 = country_resource_list_from_ripe['resources']['ipv4']
@@ -85,7 +83,6 @@ def get_country_info():
             country_asns_data_from_ripe = None
             print(f"Ашипка апи, блэт: {err}")
         if country_asns_data_from_ripe is not None:
-            print("+"*60)
             country_asns_data_from_ripe = loads(country_asns_data_from_ripe.text)
             country.asns_registered_count = country_asns_data_from_ripe["data"]["countries"][0]["stats"]["registered"]
             country.asns_routed_count = country_asns_data_from_ripe["data"]["countries"][0]["stats"]["routed"]
