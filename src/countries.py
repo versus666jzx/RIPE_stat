@@ -1,4 +1,5 @@
 # взято отсюда https://gist.github.com/mlisovyi/e8df5c907a8250e14cc1e5933ed53ffd
+# 197 стран
 
 countries = [
 {'timezones': ['Europe/Andorra'], 'code': 'AD', 'continent': 'Europe', 'name': 'Andorra', 'capital': 'Andorra la Vella'},

@@ -25,11 +25,7 @@ url = 'https://stat.ripe.net/data/country-resource-stats/data.json'
 ## timeline
 # starttime 	        Start time of this validity period.
 # endtime 	            End time of this validity period.
-n = 0
-for country in countries:
-    n += 1
-print(n)
-exit()
+
 for country in countries:
 
     t_keys = 'starttime', 'endtime',
