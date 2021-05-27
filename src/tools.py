@@ -4,128 +4,98 @@ from requests import get, adapters
 from json import loads, dumps
 from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
+from classes import Country
 import os
 
 
-def GetResourceStats():
-	adapters.DEFAULT_RETRIES = 3
-	# yesterday = datetime.today().date() - timedelta(days=30)
-	yesterday = datetime.today().date().replace(day=1)
-	today = datetime.today().date()
-	my_path = os.path.pardir
+def get_country_info():
+    adapters.DEFAULT_RETRIES = 3
+    # текущая дата
+    today = datetime.today().date()
+    # начало месяца
+    yesterday = datetime.today().date().replace(day=1)
+    get_country_stats_url = 'https://stat.ripe.net/data/country-resource-stats/data.json'
+    get_country_resource_list_url = 'https://stat.ripe.net/data/country-resource-list/data.json'
+    get_country_asns_url = 'https://stat.ripe.net/data/country-asns/data.json'
 
-	url = 'https://stat.ripe.net/data/country-resource-stats/data.json'
+    for country_data_from_file in countries:
+        country = Country(country_code=country_data_from_file["code"],
+                          country_name=country_data_from_file["name"],
+                          ipv4_prefix_stats=[],
+                          ipv4_prefix_ris=[],
+                          ipv6_prefix_stats=[],
+                          ipv6_prefix_ris=[],
+                          asns=[],
+                          asns_stats=[],
+                          asns_ris=[],
+                          asns_registered=[],
+                          asns_routed="",
+                          asns_non_routed="",
+                          days=[],
+                          months=[],
+                          months_human_read=[],
+                          years=[]
+                          )
 
-	# asns_ris 	            number of ASNs seen in routing data
-	# asns_stats 	        number of ASNs seen in registration data
-	# v4_prefixes_ris 	    number of v4 prefixes seen in routing data
-	# v4_prefixes_stats 	number of v4 prefixes seen in registration data
-	# v6_prefixes_ris 	    number of v6 prefixes seen in routing data
-	# v6_prefixes_stats 	number of v6 prefixes seen in registration data
-	# stats_data 	        timestamp of the RIR stat file that is used for the registration data
-	## timeline
-	# starttime 	        Start time of this validity period.
-	# endtime 	            End time of this validity period.
+        country_code = country_data_from_file["code"]
+        params = {"resource": country_code, 'starttime': yesterday, 'endtime': today, 'resolution': '5m'}
+        try:
+            country_stats_from_ripe = get(get_country_stats_url, params, timeout=10)
+        except Exception as err:
+            country_stats_from_ripe = None
+            print(f"Ашипка апи, блэт: {err}")
 
-	for country in countries:
+        if country_stats_from_ripe is not None:
+            country_stats_from_ripe = loads(country_stats_from_ripe.text)['data']['stats']
+            print("+"*60)
+            print(dumps(country_stats_from_ripe, indent=4))
+            for data_from_ripe in country_stats_from_ripe:
+                country.years.append(data_from_ripe['stats_date'].split('T')[0].split('-')[0])
+                country.months.append(data_from_ripe['stats_date'].split('T')[0].split('-')[1])
+                country.months_human_read.append(
+                    calendar.month_name[int(data_from_ripe['stats_date'].split('T')[0].split('-')[1])]
+                )
+                country.days.append(data_from_ripe['stats_date'].split('T')[0].split('-')[2])
+                country.ipv4_prefix_ris.append(data_from_ripe['v4_prefixes_ris'])
+                country.ipv6_prefix_ris.append(data_from_ripe['v6_prefixes_ris'])
+                country.ipv4_prefix_stats.append(data_from_ripe['v4_prefixes_stats'])
+                country.ipv6_prefix_stats.append(data_from_ripe['v6_prefixes_stats'])
+                country.asns_ris.append(data_from_ripe['asns_ris'])
+                country.asns_stats.append(data_from_ripe['asns_stats'])
 
-		t_keys = 'starttime', 'endtime',
-		v4_prefixes_ris = []
-		v6_prefixes_ris = []
-		v4_prefixes_stats = []
-		v6_prefixes_stats = []
-		asns_ris = []
-		asns_stats = []
-		stats_date = []
-		x = []
-		n = 1
+        params = {"resource": country_code}
+        try:
+            country_resource_list_from_ripe = get(get_country_resource_list_url, params)
+        except Exception as err:
+            country_resource_list_from_ripe = None
+            print(f"Ашипка апи, блэт: {err}")
 
-		country_code = country["code"]
-		params = {"resource": country_code}
-		params['starttime'] = yesterday
-		params['endtime'] = today
-		params['resolution'] = '5m'
-		try:
-			res = get(url, params, timeout=10)
-		except Exception as err:
-			res = None
-			print(f"Ашипка апи, блэт: {err}")
-			continue
+        if country_resource_list_from_ripe is not None:
+            country_resource_list_from_ripe = loads(country_resource_list_from_ripe.text)["data"]
+            print("+"*60)
+            print(dumps(country_resource_list_from_ripe, indent=4))
+            country.asns_routed = country_resource_list_from_ripe['resources']['asn']
+            country.ipv6 = country_resource_list_from_ripe['resources']['ipv4']
+            country.ipv4 = country_resource_list_from_ripe['resources']['ipv6']
 
-		if res is not None:
-			res = loads(res.text)['data']['stats']
-			print(dumps(res, indent=4))
-		for country_data in res:
-			year = country_data['stats_date'].split('T')[0].split('-')[0]
-			month_number = country_data['stats_date'].split('T')[0].split('-')[1]
-			month = calendar.month_name[int(month_number)]
-			day = country_data['stats_date'].split('T')[0].split('-')[2]
-			v4_prefixes_ris.append(country_data['v4_prefixes_ris'])
-			v6_prefixes_ris.append(country_data['v6_prefixes_ris'])
-			v4_prefixes_stats.append(country_data['v4_prefixes_stats'])
-			v6_prefixes_stats.append(country_data['v6_prefixes_stats'])
-			asns_ris.append(country_data['asns_ris'])
-			asns_stats.append(country_data['asns_stats'])
-			stats_date.append(day)
-			x.append(n)
-			n += 1
+        params = {"resource": country_code, "lod": 1}
+        try:
+            country_asns_data_from_ripe = get(get_country_asns_url, params)
+        except Exception as err:
+            country_asns_data_from_ripe = None
+            print(f"Ашипка апи, блэт: {err}")
+        if country_asns_data_from_ripe is not None:
+            print("+"*60)
+            country_asns_data_from_ripe = loads(country_asns_data_from_ripe.text)
+            country.asns_registered_count = country_asns_data_from_ripe["data"]["countries"][0]["stats"]["registered"]
+            country.asns_routed_count = country_asns_data_from_ripe["data"]["countries"][0]["stats"]["routed"]
+            if 'set()' not in country_asns_data_from_ripe["data"]["countries"][0]["routed"]:
+                country.asns_routed = country_asns_data_from_ripe["data"]["countries"][0]["routed"]
+            if 'set()' not in country_asns_data_from_ripe["data"]["countries"][0]["non_routed"]:
+                country.asns_routed = country_asns_data_from_ripe["data"]["countries"][0]["non_routed"]
 
-		fig, axs = plt.subplots(3, 1, constrained_layout=True)
-
-		fig.suptitle(f"ASNS and PREFIXES stat for {country['name']} in {month}", ha='center', size='x-large',
-		             style='italic', color='C2')
-		fig.set_figwidth(18)
-		fig.set_figheight(13)
-
-		axs[0].plot(stats_date, asns_ris, label="asns_ris")
-		axs[0].plot(stats_date, asns_stats, label="asns_stats")
-		axs[0].set_xlabel("Date")
-		axs[0].set_ylabel("Number of AS")
-		axs[0].set_title(f"ASNS stat")
-		axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, shadow=True)
-
-		axs[1].set_title(f"PREFIXES stat")
-		axs[1].plot(stats_date, v4_prefixes_ris, label="v4_prefixes_ris")
-		axs[1].plot(stats_date, v6_prefixes_ris, label="v6_prefixes_ris")
-		axs[1].set_xlabel("Date")
-		axs[1].set_ylabel("Number of prefixes")
-		axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, shadow=True)
-
-		axs[2].set_title(f"PREFIXES delete/add count")
-		axs[2].plot(stats_date, v4_prefixes_stats, label="v4_prefixes_stat")
-		axs[2].plot(stats_date, v6_prefixes_stats, label="v6_prefixes_stat")
-		axs[2].set_xlabel("Date")
-		axs[2].set_ylabel("Number of delete/add prefixes")
-		axs[2].legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, shadow=True)
-
-		plt.show()
-		fig.savefig(fr"{my_path}\plots\{country['name']}-stat.png")
+        print(country.__dict__)
+        exit()
 
 
-def GetCountryResourceList():
-	url = "https://stat.ripe.net/data/country-resource-list/data.json"
-
-	for country in countries:
-		v4_prefixes_ris = []
-		v6_prefixes_ris = []
-		v4_prefixes_stats = []
-		v6_prefixes_stats = []
-		asns_ris = []
-		asns_stats = []
-		stats_date = []
-		x = []
-		n = 1
-
-		country_code = country["code"]
-		params = {"resource": country_code}
-
-		try:
-			res = get(url, params)
-		except Exception as err:
-			print(f"Ашипка апи, блэт: {err}")
-		res = loads(res.text)["data"]
-		print(dumps(res, indent=4))
-
-
-
-GetCountryResourceList()
+get_country_info()
