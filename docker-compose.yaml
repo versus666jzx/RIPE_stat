@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+    postgres:
+        image: postgres:latest
+        container_name: ripe_postgres
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            PGDATA: /data/postgres
+        volumes:
+            - ripe_postgres:/data/postgres
+        ports:
+            - "5432:5432"
+        networks:
+            - postgres
+        restart: unless-stopped
+
+    adminer:
+        image: adminer
+        restart: always
+        ports:
+            - 8080:8080
+        networks:
+            - postgres
+
+networks:
+    postgres:
+        driver: bridge
+
+volumes:
+    ripe_postgres:

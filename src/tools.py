@@ -15,7 +15,7 @@ def get_country_info(
         queue: queue.Queue
 ) -> queue.Queue:
 
-    adapters.DEFAULT_RETRIES = 3
+    adapters.DEFAULT_RETRIES = 5
     # дата начала сбора данных
     start_time = datetime.today().date().replace(day=1)
     # дата завершения сбора данных
@@ -25,8 +25,13 @@ def get_country_info(
     get_country_resource_list_url = 'https://stat.ripe.net/data/country-resource-list/data.json'
     get_country_asns_url = 'https://stat.ripe.net/data/country-asns/data.json'
 
+    country_count = len(countries)
+
     # для каждой страны из списка
     for country_data_from_file in countries:
+        print(f"Получаем данные по {country_data_from_file['name']}")
+        country_count -= 1
+        print(f"Осталось стран {country_count} из 197")
         # создаем объект класса
         country = Country(country_code=country_data_from_file["code"],
                           country_name=country_data_from_file["name"],
@@ -43,7 +48,9 @@ def get_country_info(
                           days=[],
                           months=[],
                           months_human_read=[],
-                          years=[]
+                          years=[],
+                          ipv4=[],
+                          ipv6=[]
                           )
 
         # получаем код страны
@@ -55,18 +62,18 @@ def get_country_info(
         # "1h" - 1 hour
         # "1d" - 1 day
         # "1w" - 1 week
-        params = {"resource": country_code, 'start_time': start_time, 'end_time': end_time, 'resolution': '5m'}
+        params = {"resource": country_code, 'start_time': start_time, 'end_time': end_time, 'resolution': '1d'}
 
         # пытаемся получить данные по api
         try:
-            country_stats_from_ripe = get(get_country_stats_url, params, timeout=10)
+            country_stats_from_ripe = get(get_country_stats_url, params, timeout=30)
         except Exception as err:
             country_stats_from_ripe = None
             print(f"Ашипка апи, блэт: {err}")
 
         if country_stats_from_ripe is not None:
             country_stats_from_ripe = loads(country_stats_from_ripe.text)['data']['stats']
-            print(dumps(country_stats_from_ripe, indent=4))
+            # print(dumps(country_stats_from_ripe, indent=4))
             for data_from_ripe in country_stats_from_ripe:
                 country.years.append(data_from_ripe['stats_date'].split('T')[0].split('-')[0])
                 country.months.append(data_from_ripe['stats_date'].split('T')[0].split('-')[1])
@@ -86,24 +93,24 @@ def get_country_info(
 
         # пытаемся получить данные по api
         try:
-            country_resource_list_from_ripe = get(get_country_resource_list_url, params)
+            country_resource_list_from_ripe = get(get_country_resource_list_url, params, timeout=30)
         except Exception as err:
             country_resource_list_from_ripe = None
             print(f"Ашипка апи, блэт: {err}")
 
         if country_resource_list_from_ripe is not None:
             country_resource_list_from_ripe = loads(country_resource_list_from_ripe.text)["data"]
-            print(dumps(country_resource_list_from_ripe, indent=4))
+            # print(dumps(country_resource_list_from_ripe, indent=4))
             country.asns_routed = country_resource_list_from_ripe['resources']['asn']
-            country.ipv6 = country_resource_list_from_ripe['resources']['ipv4']
-            country.ipv4 = country_resource_list_from_ripe['resources']['ipv6']
+            country.ipv4 = country_resource_list_from_ripe['resources']['ipv4']
+            country.ipv6 = country_resource_list_from_ripe['resources']['ipv6']
 
         # задаем параметры для api
         params = {"resource": country_code, "lod": 1}
 
         # пытаемся получить данные по api
         try:
-            country_asns_data_from_ripe = get(get_country_asns_url, params)
+            country_asns_data_from_ripe = get(get_country_asns_url, params, timeout=30)
         except Exception as err:
             country_asns_data_from_ripe = None
             print(f"Ашипка апи, блэт: {err}")
@@ -117,14 +124,15 @@ def get_country_info(
                 country.asns_routed = country_asns_data_from_ripe["data"]["countries"][0]["non_routed"]
 
         queue.put(country)
-        return queue
+    return queue
 
 
 def insert_data_to_db(
-        conn: psycopg2.connect(),
+        conn: psycopg2.connect,
         queue: queue.Queue
 ):
     cursor = conn.cursor()
+    queue_size = queue.qsize()
     while not queue.empty():
         country_data: classes.Country = queue.get()
         sql = """
@@ -146,11 +154,9 @@ def insert_data_to_db(
             months_human_read, 
             years, 
             ipv4, 
-            ipv6, 
-            asns_neighbour_count, 
-            asns_neighbours
+            ipv6
         ) 
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
         record_to_insert = (
             country_data.country_code,
@@ -159,20 +165,23 @@ def insert_data_to_db(
             country_data.ipv4_prefix_ris,
             country_data.ipv6_prefix_stats,
             country_data.ipv6_prefix_ris,
-            country_data.asns_routed,
+            [int(asns) for asns in country_data.asns_routed],
             country_data.asns_stats,
+            country_data.asns_ris,
             country_data.asns_registered_count,
             country_data.asns_routed_count,
-            country_data.asns_non_routed,
-            country_data.days,
-            country_data.months,
-            country_data.months_human_read,
-            country_data.years,
+            [int(non_routed_asn) for non_routed_asn in country_data.asns_non_routed],
+            set([int(day) for day in country_data.days]),
+            set([int(month) for month in country_data.months]),
+            set(country_data.months_human_read),
+            set([int(year) for year in country_data.years]),
             country_data.ipv4,
             country_data.ipv6,
-            country_data.asns_neighbour_count,
-            country_data.asns_neighbours
         )
 
         cursor.execute(sql, record_to_insert)
         conn.commit()
+        queue.task_done()
+
+        queue_size -= 1
+        print(f"Осталось вставить {queue_size} записей")
