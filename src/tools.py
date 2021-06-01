@@ -29,6 +29,7 @@ def get_country_info(
 
     # для каждой страны из списка
     for country_data_from_file in countries:
+        country_data_from_file = countries[124]
         print(f"Получаем данные по {country_data_from_file['name']}")
         country_count -= 1
         print(f"Осталось стран {country_count} из 197")
@@ -124,7 +125,7 @@ def get_country_info(
                 country.asns_routed = country_asns_data_from_ripe["data"]["countries"][0]["non_routed"]
 
         queue.put(country)
-    return queue
+        return queue
 
 
 def insert_data_to_db(
@@ -133,7 +134,7 @@ def insert_data_to_db(
 ):
     cursor = conn.cursor()
 
-    if create_table(cursor) is 0:
+    if create_table(cursor) == 0:
 
         queue_size = queue.qsize()
         while not queue.empty():
@@ -219,7 +220,7 @@ def create_table(cursor):
         owner to postgres;
     """
 
-    check_table_exist = "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'country_data';"
+    check_table_exist = "SELECT table_name FROM information_schema.tables where table_name = 'country_data';"
     try:
         cursor.execute(check_table_exist)
         res = cursor.fetchall()
