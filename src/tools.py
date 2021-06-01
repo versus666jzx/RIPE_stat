@@ -132,56 +132,104 @@ def insert_data_to_db(
         queue: queue.Queue
 ):
     cursor = conn.cursor()
-    queue_size = queue.qsize()
-    while not queue.empty():
-        country_data: classes.Country = queue.get()
-        sql = """
-        INSERT INTO country_data (
-            country_code, 
-            country_name, 
-            ipv4_prefix_stats, 
-            ipv4_prefix_ris, 
-            ipv6_prefix_stats, 
-            ipv6_prefix_ris, 
-            asns_routed, 
-            asns_stats, 
-            asns_ris, 
-            asns_registered_count, 
-            asns_routed_count, 
-            asns_non_routed, 
-            days, 
-            months, 
-            months_human_read, 
-            years, 
-            ipv4, 
-            ipv6
-        ) 
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
-        record_to_insert = (
-            country_data.country_code,
-            country_data.country_name,
-            country_data.ipv4_prefix_stats,
-            country_data.ipv4_prefix_ris,
-            country_data.ipv6_prefix_stats,
-            country_data.ipv6_prefix_ris,
-            [int(asns) for asns in country_data.asns_routed],
-            country_data.asns_stats,
-            country_data.asns_ris,
-            country_data.asns_registered_count,
-            country_data.asns_routed_count,
-            [int(non_routed_asn) for non_routed_asn in country_data.asns_non_routed],
-            list(set([int(day) for day in country_data.days])),
-            list(set([int(month) for month in country_data.months])),
-            list(set(country_data.months_human_read)),
-            list(set([int(year) for year in country_data.years])),
-            country_data.ipv4,
-            country_data.ipv6,
-        )
+    if create_table(cursor) is 0:
 
-        cursor.execute(sql, record_to_insert)
-        conn.commit()
-        queue.task_done()
+        queue_size = queue.qsize()
+        while not queue.empty():
+            country_data: classes.Country = queue.get()
+            sql = """
+            INSERT INTO country_data (
+                country_code, 
+                country_name, 
+                ipv4_prefix_stats, 
+                ipv4_prefix_ris, 
+                ipv6_prefix_stats, 
+                ipv6_prefix_ris, 
+                asns_routed, 
+                asns_stats, 
+                asns_ris, 
+                asns_registered_count, 
+                asns_routed_count, 
+                asns_non_routed, 
+                days, 
+                months, 
+                months_human_read, 
+                years, 
+                ipv4, 
+                ipv6
+            ) 
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
-        queue_size -= 1
-        print(f"Осталось вставить {queue_size} записей")
+            record_to_insert = (
+                country_data.country_code,
+                country_data.country_name,
+                country_data.ipv4_prefix_stats,
+                country_data.ipv4_prefix_ris,
+                country_data.ipv6_prefix_stats,
+                country_data.ipv6_prefix_ris,
+                [int(asns) for asns in country_data.asns_routed],
+                country_data.asns_stats,
+                country_data.asns_ris,
+                country_data.asns_registered_count,
+                country_data.asns_routed_count,
+                [int(non_routed_asn) for non_routed_asn in country_data.asns_non_routed],
+                list(set([int(day) for day in country_data.days])),
+                list(set([int(month) for month in country_data.months])),
+                list(set(country_data.months_human_read)),
+                list(set([int(year) for year in country_data.years])),
+                country_data.ipv4,
+                country_data.ipv6,
+            )
+
+            cursor.execute(sql, record_to_insert)
+            conn.commit()
+            queue.task_done()
+
+            queue_size -= 1
+            print(f"Осталось вставить {queue_size} записей")
+
+
+def create_table(cursor):
+    create_table_sql = """
+    create table country_data(
+    country_code          text,
+    country_name          text,
+    ipv4_prefix_stats     integer[],
+    ipv4_prefix_ris       integer[],
+    ipv6_prefix_stats     integer[],
+    ipv6_prefix_ris       integer[],
+    asns_routed           integer[],
+    asns_stats            integer[],
+    asns_ris              integer[],
+    asns_registered_count integer,
+    asns_routed_count     integer,
+    asns_non_routed       integer[],
+    days                  integer[],
+    months                integer[],
+    months_human_read     text[],
+    years                 integer[],
+    ipv4                  text[],
+    ipv6                  text[],
+    asns_neighbour_count  integer,
+    asns_neighbours       integer[]
+    );
+
+    alter table country_data
+        owner to postgres;
+    """
+
+    check_table_exist = "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'country_data';"
+    try:
+        cursor.execute(check_table_exist)
+        res = cursor.fetchall()
+    except Exception as err:
+        print(f"Не удалось выполнить запрос к БД: {check_table_exist}")
+    if len(res) == 0:
+        try:
+            cursor.execute(create_table_sql)
+            return 0
+        except Exception as err:
+            print(f"Не удалось создать таблицу в БД: {err}")
+    else:
+        return 0
