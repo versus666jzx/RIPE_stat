@@ -29,7 +29,6 @@ def get_country_info(
 
     # для каждой страны из списка
     for country_data_from_file in countries:
-        country_data_from_file = countries[124]
         print(f"Получаем данные по {country_data_from_file['name']}")
         country_count -= 1
         print(f"Осталось стран {country_count} из 197")
@@ -125,7 +124,7 @@ def get_country_info(
                 country.asns_routed = country_asns_data_from_ripe["data"]["countries"][0]["non_routed"]
 
         queue.put(country)
-        return queue
+    return queue
 
 
 def insert_data_to_db(
