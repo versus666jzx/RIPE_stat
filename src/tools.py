@@ -17,9 +17,10 @@ def get_country_info(
 
     adapters.DEFAULT_RETRIES = 5
     # дата начала сбора данных
-    start_time = datetime.today().date().replace(day=1)
+    start_time = str(datetime.today().date().replace(day=1)) + "T00:00"
     # дата завершения сбора данных
-    end_time = datetime.today().date()
+    end_time = str(datetime.today().date()) + "T23:59"
+    print(start_time, end_time)
     # источники данных
     get_country_stats_url = 'https://stat.ripe.net/data/country-resource-stats/data.json'
     get_country_resource_list_url = 'https://stat.ripe.net/data/country-resource-list/data.json'
@@ -62,7 +63,7 @@ def get_country_info(
         # "1h" - 1 hour
         # "1d" - 1 day
         # "1w" - 1 week
-        params = {"resource": country_code, 'start_time': start_time, 'end_time': end_time, 'resolution': '1d'}
+        params = {"resource": country_code, 'starttime': start_time, 'endtime': end_time, 'resolution': '1d'}
 
         # пытаемся получить данные по api
         try:
@@ -162,7 +163,7 @@ def insert_data_to_db(
             values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
             record_to_insert = (
-                country_data.country_code,
+                country_data.country_code + "2",
                 country_data.country_name,
                 country_data.ipv4_prefix_stats,
                 country_data.ipv4_prefix_ris,
