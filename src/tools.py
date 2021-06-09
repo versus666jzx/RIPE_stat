@@ -3,14 +3,11 @@ import queue
 import psycopg2
 import classes
 from countries import countries
-from requests import get, adapters
-from json import loads, dumps
-from datetime import datetime, timedelta
-from matplotlib import pyplot as plt
+from requests import get
+from json import loads
 from classes import Country
-import os
-import threading
 from time import sleep
+from random import random
 
 
 def create_default_config(config_path: str):
@@ -32,12 +29,11 @@ def get_country_resource_stats(
         queue: queue.Queue,
         resolution: str,
         start_time: str,
-        end_time: str,
-        sleep_time: float
-) -> queue.Queue:
+        end_time: str
+):
 
     url = 'https://stat.ripe.net/data/country-resource-stats/data.json'
-
+    sleep_time = round(random(), 1)
     country: classes.Country = queue.get()
 
     # задаем параметры для api
@@ -78,12 +74,11 @@ def get_country_resource_stats(
 
 
 def get_country_resuorce_list(
-        queue: queue.Queue,
-        sleep_time: float
+        queue: queue.Queue
 ):
 
     url = 'https://stat.ripe.net/data/country-resource-list/data.json'
-
+    sleep_time = round(random(), 1)
     country: classes.Country = queue.get()
     # задаем параметры для api
     params = {"resource": country.country_code}
@@ -109,11 +104,10 @@ def get_country_resuorce_list(
 
 
 def get_country_asns_data(
-        queue: queue.Queue,
-        sleep_time: float
+        queue: queue.Queue
 ):
     url = 'https://stat.ripe.net/data/country-asns/data.json'
-
+    sleep_time = round(random(), 1)
     country: classes.Country = queue.get()
     # задаем параметры для api
     params = {"resource": country.country_code, "lod": 1}
@@ -149,17 +143,17 @@ def insert_data_to_db(
     while not queue.empty():
         country_data: classes.Country = queue.get()
         # обрабатываем строку типа {AsnSingle(32055)} в asns_routed
-        print("++++++++++++++ БЫЛО ++++++++++++++")
-        print(country_data.asns_routed)
-        print(type(country_data.asns_routed))
+        # print("++++++++++++++ БЫЛО ++++++++++++++")
+        # print(country_data.asns_routed)
+        # print(type(country_data.asns_routed))
         if isinstance(country_data.asns_routed, str):
             try:
                 asns_routed = country_data.asns_routed.split(',')
                 country_data.asns_routed = [int(asns.split('(')[1].split(')')[0]) for asns in asns_routed]
             except Exception:
                 country_data.asns_routed = [int(asns.split('(')[1].split(')')[0]) for asns in country_data.asns_routed]
-        print("++++++++++++++ СТАЛО ++++++++++++++")
-        print(country_data.asns_routed)
+        # print("++++++++++++++ СТАЛО ++++++++++++++")
+        # print(country_data.asns_routed)
         sql = """
         INSERT INTO country_data (
             country_code, 
