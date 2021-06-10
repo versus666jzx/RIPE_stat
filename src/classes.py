@@ -1,6 +1,3 @@
-from matplotlib import pyplot as plt
-
-
 class Country:
 	def __init__(self, *args, **kwargs):
 		self.country_code: str = kwargs.get("country_code")
