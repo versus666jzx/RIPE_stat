@@ -136,8 +136,14 @@ def get_country_asns_data(
 
 def get_asns_neighbour_count(queue: queue.Queue):
     sleep_time = round(random(), 1)
+    url = 'https://stat.ripe.net/data/asn-neighbours/data.json'
     while not queue.empty():
+        country_index = 0
         country_data: classes.Country = queue.get()
+        for asn in country_data.asns_routed:
+            params = {"resource": f"AS{asn}"}
+
+
 
 
 def insert_data_to_db(
