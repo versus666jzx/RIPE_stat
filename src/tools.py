@@ -10,6 +10,7 @@ from time import sleep
 from random import random
 
 
+# пока не используется
 def create_default_config(config_path: str):
     default_conf = """
 [RIPE_stat_config]
@@ -176,6 +177,9 @@ def insert_data_to_db(
             ipv6
         ) 
         values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        # on conflict (country_code)
+        # do update
+        # set ipv4_prefix_stats = exclude ipv4_prefix_stats
 
         record_to_insert = (
             country_data.country_code,
@@ -241,8 +245,9 @@ def create_table(conn):
         cursor.execute(check_table_exist)
         res = cursor.fetchall()
     except Exception as err:
-        print(f"Не удалось выполнить запрос к БД: {check_table_exist}")
-    if len(res) == 0:
+        res = None
+        print(f"Не удалось выполнить запрос: {check_table_exist} т.к. {err}")
+    if len(res) == 0 and res is not None:
         try:
             cursor.execute(create_table_sql)
             return 0
