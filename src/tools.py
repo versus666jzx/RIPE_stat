@@ -134,6 +134,12 @@ def get_country_asns_data(
     queue.put(country)
 
 
+def get_asns_neighbour_count(queue: queue.Queue):
+    sleep_time = round(random(), 1)
+    while not queue.empty():
+        country_data: classes.Country = queue.get()
+
+
 def insert_data_to_db(
         conn: psycopg2.connect,
         queue: queue.Queue
@@ -256,6 +262,26 @@ def create_table(conn):
             return 1
     else:
         return 0
+
+
+def to_json(queue: queue.Queue):
+    with open('country_data', 'rw') as file:
+        data = {}
+        while not queue.empty():
+            country_data: classes.Country = queue.get()
+            data += {
+                'country': country_data.country_name,
+                'county_code': country_data.country_code,
+                'ipv4_prefix_ris': country_data.ipv4_prefix_ris,
+                'ipv6_prefix_ris': country_data.ipv6_prefix_ris,
+                'asns_routed': country_data.asns_routed,
+                'asns_stats': country_data.asns_stats,
+                'asns_ris': country_data.asns_ris,
+                'date': f'{country_data.days}-{country_data.months}-{country_data.years}',
+                'ipv4': country_data.ipv4,
+                'ipv6': country_data.ipv6
+            }
+        file.writelines(data)
 
 
 def get_country_queue(

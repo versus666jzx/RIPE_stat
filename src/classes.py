@@ -18,3 +18,5 @@ class Country:
 		self.years: list = kwargs.get("years")
 		self.ipv4: list = kwargs.get("ipv4")
 		self.ipv6: list = kwargs.get("ipv6")
+		self.asns_neighbour: list = kwargs.get("asns_neighbour")
+		self.asns_neighbour_count: int = kwargs.get("asns_neighbour_count")
